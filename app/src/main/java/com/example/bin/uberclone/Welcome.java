@@ -88,7 +88,6 @@ public class Welcome extends FragmentActivity implements OnMapReadyCallback,
                     startLocationUpdates();
                     dislayLocation();
                     Snackbar.make(mapFragment.getView(),"You are online",Snackbar.LENGTH_SHORT).show();
-
                 }
                 else
                 {
