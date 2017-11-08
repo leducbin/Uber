@@ -4,14 +4,18 @@ import android.*;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.location.Location;
 import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Handler;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
@@ -19,6 +23,7 @@ import android.support.multidex.MultiDex;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.Interpolator;
@@ -109,6 +114,8 @@ public class Welcome extends FragmentActivity implements OnMapReadyCallback,
     private Handler handler;
     private LatLng startPosition,endPosition,currentPosition;
     private int index,next;
+
+    private int k=0;
 //    private Button btnGo;
     private PlaceAutocompleteFragment places;
     private String destination;
@@ -143,12 +150,12 @@ public class Welcome extends FragmentActivity implements OnMapReadyCallback,
                     carMarket.setPosition(newPos);
                     carMarket.setAnchor(0.5f,0.5f);
                     carMarket.setRotation(getBearing(startPosition,newPos));
-                    mMap.moveCamera(CameraUpdateFactory.newCameraPosition(
-                            new CameraPosition.Builder()
-                                .target(newPos)
-                                .zoom(15.5f)
-                                .build()
-                    ));
+//                    mMap.moveCamera(CameraUpdateFactory.newCameraPosition(
+//                            new CameraPosition.Builder()
+//                                .target(newPos)
+//                                .zoom(15.5f)
+//                                .build()
+//                    ));
                 }
             });
             valueAnimator.start();
@@ -190,17 +197,19 @@ public class Welcome extends FragmentActivity implements OnMapReadyCallback,
             public void onCheckedChanged(boolean isOnline) {
                 if(isOnline)
                 {
+
+                    Log.e("BINLEE","Online "+ isOnline);
                     startLocationUpdates();
                     dislayLocation();
                     Snackbar.make(mapFragment.getView(),"You are online",Snackbar.LENGTH_SHORT).show();
                 }
-                else
-                {
+                else {
                     stopLocationUpdates();
-                    Log.e("BINLEE","Data "+ mCurrent);
-                    if(mCurrent != null)
+                    Log.e("BINLEE", "Data " + mCurrent);
+                    mCurrent.remove();
+                    if (k == 1)
                     {
-                        mCurrent.remove();
+                        Log.e("BINLEE", "Data " + mCurrent);
                         mMap.clear();
                         handler.removeCallbacks(drawPathRunnable);
                     }
@@ -345,7 +354,8 @@ public class Welcome extends FragmentActivity implements OnMapReadyCallback,
                                 handler = new Handler();
                                 index = -1;
                                 next = 1;
-                                handler.postDelayed(drawPathRunnable,3000);
+                                k = 1;
+                                handler.postDelayed(drawPathRunnable,2000);
 
                             } catch (JSONException e) {
                                 e.printStackTrace();
@@ -454,9 +464,9 @@ public class Welcome extends FragmentActivity implements OnMapReadyCallback,
 
     private void createLocationRequest() {
         mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(UPDATE_INTERVAL);
-        mLocationRequest.setFastestInterval(FATEST_INTERVAL);
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+        mLocationRequest.setInterval(5 * 1000);
+        mLocationRequest.setFastestInterval(1 * 1000);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         mLocationRequest.setSmallestDisplacement(DISPLACEMENT);
     }
 
@@ -492,6 +502,23 @@ public class Welcome extends FragmentActivity implements OnMapReadyCallback,
         LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient,this);
     }
 
+    public void showSettingsAlert(final Context context) {
+        AlertDialog.Builder alertDialog = new AlertDialog.Builder(context);
+        alertDialog.setTitle("Location Settings");
+        alertDialog.setMessage("Location is not enabled. Do you want to go to settings menu ?");
+        alertDialog.setPositiveButton("Settings", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+                Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                context.startActivity(intent);
+            }
+        });
+        alertDialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
+        alertDialog.show();
+    }
     private void dislayLocation() {
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
@@ -499,13 +526,18 @@ public class Welcome extends FragmentActivity implements OnMapReadyCallback,
         {
             return;
         }
+
+
+
         mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+        Log.e("BINBIN","Data " + mLastLocation  + mGoogleApiClient.isConnected());
         if (mLastLocation != null)
         {
             if (location_switch.isChecked())
             {
                 final double latitude = mLastLocation.getLatitude();
                 final double longitude = mLastLocation.getLongitude();
+
 
                 //Update To Firebase
                 geoFire.setLocation(FirebaseAuth.getInstance().getCurrentUser().getUid(), new GeoLocation(latitude, longitude), new GeoFire.CompletionListener() {
@@ -535,7 +567,7 @@ public class Welcome extends FragmentActivity implements OnMapReadyCallback,
         }
         else
         {
-            Log.d("ERROR","Cannot get your location");
+            Log.e("ERROR","Cannot get your location");
         }
     }
 
@@ -568,6 +600,7 @@ public class Welcome extends FragmentActivity implements OnMapReadyCallback,
             return;
         }
         LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient,mLocationRequest,this);
+        Log.e("ERROR","Here" + LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient,mLocationRequest,this));
     }
 
 
@@ -615,4 +648,14 @@ public class Welcome extends FragmentActivity implements OnMapReadyCallback,
         mLastLocation = location;
         dislayLocation();
     }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        final LocationManager manager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+                && !manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+            showSettingsAlert(this);
+        }
+    }
+
 }
