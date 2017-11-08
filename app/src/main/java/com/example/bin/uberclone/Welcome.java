@@ -197,10 +197,15 @@ public class Welcome extends FragmentActivity implements OnMapReadyCallback,
                 else
                 {
                     stopLocationUpdates();
-                    mCurrent.remove();
-                    mMap.clear();
-                    handler.removeCallbacks(drawPathRunnable);
+                    Log.e("BINLEE","Data "+ mCurrent);
+                    if(mCurrent != null)
+                    {
+                        mCurrent.remove();
+                        mMap.clear();
+                        handler.removeCallbacks(drawPathRunnable);
+                    }
                     Snackbar.make(mapFragment.getView(),"You are offline",Snackbar.LENGTH_SHORT).show();
+
                 }
             }
         });
